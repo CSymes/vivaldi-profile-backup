@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Repo location: https://github.com/CSymes/vivaldi-profile-backup
+
+
+# filename prefix of the backup zips
+prefix="vivaldi-"
+# location of the folder to backup
+target="$HOME/.config/vivaldi/Default/"
+# location to keep backups in. should not exist or be a directory
+store="$HOME/Dropbox/Backups/Vivaldi"
+# maximum total storage to use for backups in megabytes.
+max_size=314
+
+
+
+# ensure store exists. shenanigans will ensue if it exists but is not a directory.
+if [ ! -d "$store" ]; then
+	mkdir -p "$store"
+fi
+
+# navigate to directory to backup. `zip`ing an absolute path will include that path inside the archive.
+cd "$target"
+
+# -r == recursive
+# -9 == max compression
+# -q == quiet
+# --exclude='*Cache*' == don't keep disposable directories
+# path1 == destination. timestamped archive inside dropbox. store location + prefix + unix timestamp
+# path2 == target folder. pwd, as we've already `cd`d to what we want to archive.
+
+filename="$prefix$(date +%s).zip"
+echo "Backing up $target to $store/$filename"
+zip -r9q --exclude='*Cache*' "$store/$filename" .
+
+
+
+# navigate to the store and cut it down to keep the # of backups from getting yuge
+cd "$store"
+
+# judge the size of the current folder (in megabytes) and cut the cruft off the end
+size=$(du -sm . | cut -f1)
+
+while [ "$size" -gt "$max_size" ]
+do
+	# 1 == list 1 filename per line
+	# $prefix* == ignore other (possibly meta) files in the directory and only look at backups
+	# head -1 == and then get the oldest (due to `ls`s default sorting)
+	# redirect errors to null to escape errors in the case of there being no files starting with the prefix
+	to_rm=$(ls -1 "$prefix"* 2>/dev/null | head -1)
+
+	if [ -z "$to_rm" ]; then
+		# complain to stderr and throw the towel in
+		>&2 echo "Backup folder max size is reached, but no backups found to remove."
+		>&2 echo "Check for large files in $target or increase max backup folder size."
+		break
+	else
+		# log what's going on. does this to to journalctl? idk.
+		echo "Deleting backup $to_rm ($(du -sm $to_rm | cut -f1) megabytes) due to reaching size limit ($max_size megabytes)"
+		# remove the offending backup
+		rm "$store/$to_rm"
+		# and recalculate the size so we don't loop until we run out of backups to rm
+		size=$(du -sm . | cut -f1)
+	fi
+done
