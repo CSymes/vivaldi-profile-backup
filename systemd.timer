@@ -1,0 +1,9 @@
+[Unit]
+Description=Run vivaldi-profile-backup every few hours
+
+[Timer]
+OnBootSec=10m
+OnActiveSec=2h
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,7 @@
+[Unit]
+Description=Vivaldi auto backup
+
+[Service]
+Type=simple
+User=<<user>>
+ExecStart=/home/<<user>>/Programs/vivaldi-backup/backup
