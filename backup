@@ -1,18 +1,28 @@
 #!/bin/bash
+set -e
 
 # Repo location: https://github.com/CSymes/vivaldi-profile-backup
 
 
+
+### CONFIGURATION
+
 # filename prefix of the backup zips
-prefix="vivaldi-"
+prefix="vivaldi-$(hostname)-"
 # location of the folder to backup
-target="$HOME/.config/vivaldi/Default/"
+# target="$HOME/.config/vivaldi/Default/" # linux default
+target="$HOME/Windows/AppData/Local/Vivaldi/User Data/Default/" # WSL (with symlink to Windows profile)
 # location to keep backups in. should not exist or be a directory
-store="$HOME/Dropbox/Backups/Vivaldi"
+# store="$HOME/Dropbox/Backups/Vivaldi"
+store="$HOME/Windows/Dropbox/Damage-Control/Vivaldi"
 # maximum total storage to use for backups in megabytes.
-max_size=314
+max_size=25
+# `light` = only archive the current tabs // `full` = everything but tmp
+archive_mode=light
 
 
+
+echo "Performing backup - $(date)"
 
 # ensure store exists. shenanigans will ensue if it exists but is not a directory.
 if [ ! -d "$store" ]; then
@@ -22,16 +32,28 @@ fi
 # navigate to directory to backup. `zip`ing an absolute path will include that path inside the archive.
 cd "$target"
 
-# -r == recursive
-# -9 == max compression
-# -q == quiet
-# --exclude='*Cache*' == don't keep disposable directories
-# path1 == destination. timestamped archive inside dropbox. store location + prefix + unix timestamp
-# path2 == target folder. pwd, as we've already `cd`d to what we want to archive.
+# Confirm we can read the important stuff before trying to archive anything
+cat "Current Tabs" > /dev/null
+# bash auto exits if we can't
+# seems like on WSL it can't be accessed *at all* with Vivaldi open
+
 
 filename="$prefix$(date +%s).zip"
 echo "Backing up $target to $store/$filename"
-zip -r9q --exclude='*Cache*' "$store/$filename" .
+
+# -r == recursive
+# -9 == max compression
+# -q == quiet
+# path1 == destination. timestamped archive inside dropbox. store location + prefix + unix timestamp
+# path2 == target folder. pwd, as we've already `cd`d to what we want to archive.
+if [[ "$archive_mode" = "light" ]]; then
+	# --include 'Current *' 'Last *' @ == only save the Tabs and Session files
+	zip -r9q --include 'Current *' 'Last *' @ "$store/$filename" .
+elif [[ "$archive_mode" = "full" ]]; then
+	# --exclude='*Cache*' == don't keep disposable directories
+	zip -r9q --exclude='*Cache*' "$store/$filename" .
+fi
+# zip -r9q --exclude='*Cache*' "$store/$filename" .
 
 
 
