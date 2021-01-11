@@ -10,13 +10,11 @@ set -e
 # filename prefix of the backup zips
 prefix="vivaldi-$(hostname)-"
 # location of the folder to backup
-# target="$HOME/.config/vivaldi/Default/" # linux default
-target="$HOME/Windows/AppData/Local/Vivaldi/User Data/Default/" # WSL (with symlink to Windows profile)
+target="$HOME/.config/vivaldi/Default/"
 # location to keep backups in. should not exist or be a directory
-# store="$HOME/Dropbox/Backups/Vivaldi"
-store="$HOME/Windows/Dropbox/Damage-Control/Vivaldi"
+store="$HOME/Dropbox/Backups/Vivaldi"
 # maximum total storage to use for backups in megabytes.
-max_size=25
+max_size=100
 # `light` = only archive the current tabs // `full` = everything but tmp
 archive_mode=light
 
@@ -32,10 +30,6 @@ fi
 # navigate to directory to backup. `zip`ing an absolute path will include that path inside the archive.
 cd "$target"
 
-# Confirm we can read the important stuff before trying to archive anything
-cat "Current Tabs" > /dev/null
-# bash auto exits if we can't
-# seems like on WSL it can't be accessed *at all* with Vivaldi open
 
 
 filename="$prefix$(date +%s).zip"
@@ -47,13 +41,12 @@ echo "Backing up $target to $store/$filename"
 # path1 == destination. timestamped archive inside dropbox. store location + prefix + unix timestamp
 # path2 == target folder. pwd, as we've already `cd`d to what we want to archive.
 if [[ "$archive_mode" = "light" ]]; then
-	# --include 'Current *' 'Last *' @ == only save the Tabs and Session files
-	zip -r9q --include 'Current *' 'Last *' @ "$store/$filename" .
+	# --include 'Sessions' == only save the Tabs and Session files
+	zip -r9q --include 'Sessions/*' 'Bookmarks' @ "$store/$filename" .
 elif [[ "$archive_mode" = "full" ]]; then
 	# --exclude='*Cache*' == don't keep disposable directories
 	zip -r9q --exclude='*Cache*' "$store/$filename" .
 fi
-# zip -r9q --exclude='*Cache*' "$store/$filename" .
 
 
 
